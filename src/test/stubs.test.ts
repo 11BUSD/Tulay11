@@ -14,9 +14,9 @@ afterAll(async () => {
 });
 
 describe.skipIf(!hasDb)("stub agents", () => {
-  it("has 9 stubs", () => {
-    expect(stubAgents).toHaveLength(9);
-    expect(STUB_AGENT_KEYS).toHaveLength(9);
+  it("has 8 stubs", () => {
+    expect(stubAgents).toHaveLength(8);
+    expect(STUB_AGENT_KEYS).toHaveLength(8);
   });
 
   it("each stub returns needs_review + not-implemented reasoning + audit, no side effects", async () => {

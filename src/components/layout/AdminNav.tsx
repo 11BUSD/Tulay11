@@ -20,6 +20,7 @@ const NAV: NavGroup[] = [
     group: "Revenue OS",
     items: [
       { href: "/admin", label: "Overview" },
+      { href: "/admin/analytics", label: "Product analytics" },
       { href: "/admin/revenue", label: "Revenue analytics" },
     ],
   },

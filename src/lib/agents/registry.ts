@@ -1,7 +1,7 @@
 /**
  * Agent registry — the single completeness source mapping `agent_key → Agent`.
  *
- * All 14 agents (5 fully built, 9 stubs) are registered here. `getAgent(key)`
+ * All 14 agents (6 fully built, 8 stubs) are registered here. `getAgent(key)`
  * is how the runner loads an agent to execute; `AGENT_KEYS` / `listAgents()`
  * expose the full set for the registry-completeness test.
  */
@@ -11,6 +11,7 @@ import { dueDiligenceAgent } from "./impl/due-diligence";
 import { outreachDraftingAgent } from "./impl/outreach-drafting";
 import { outreachSequencingAgent } from "./impl/outreach-sequencing";
 import { offerOpsAgent } from "./impl/offer-ops";
+import { compliancePrivacyAgent } from "./impl/compliance-privacy";
 import { stubAgents } from "./impl/stubs";
 
 /** The 14 canonical agent keys. */
@@ -40,6 +41,7 @@ const builtAgents: Agent[] = [
   outreachDraftingAgent,
   outreachSequencingAgent,
   offerOpsAgent,
+  compliancePrivacyAgent,
 ];
 
 const registry = new Map<string, Agent>();

@@ -9,4 +9,5 @@ export * from "./ambassadors";
 export * from "./outreach";
 export * from "./governance";
 export * from "./revenue";
+export * from "./analytics";
 export * from "./agents";

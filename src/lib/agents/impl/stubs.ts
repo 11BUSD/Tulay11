@@ -1,5 +1,5 @@
 /**
- * Stub agents (9) — registered so the orchestration layer is complete, but not
+ * Stub agents (8) — registered so the orchestration layer is complete, but not
  * wired for autonomous output this phase.
  *
  * Each implements the `Agent` interface, accepts a permissive input, performs
@@ -24,7 +24,6 @@ const STUB_SPECS: StubSpec[] = [
   { key: "growth-acquisition", purpose: "Acquisition experiment proposals" },
   { key: "lifecycle-crm", purpose: "Lifecycle nudges / segmentation" },
   { key: "analytics", purpose: "Metrics summaries/insights" },
-  { key: "compliance-privacy", purpose: "Consent/privacy review of outreach" },
   { key: "support", purpose: "Draft support replies" },
   { key: "finance-reconciliation", purpose: "Reconcile payouts/ledger" },
   { key: "qa-security", purpose: "Security/QA review of agent output" },
@@ -56,7 +55,7 @@ function makeStub(spec: StubSpec): Agent<unknown, { note: string }> {
   };
 }
 
-/** The 9 stub agents. */
+/** The 8 stub agents. */
 export const stubAgents: Agent[] = STUB_SPECS.map(makeStub);
 
 /** Keys of the stub agents (for tests). */
