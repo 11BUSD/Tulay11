@@ -11,7 +11,7 @@ import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getServiceDb } from "@/lib/db/client";
 import { recordAudit } from "@/lib/audit";
 import { offerCreateSchema } from "@/lib/validation";
-import { handleRouteError, jsonError, parseJson } from "@/lib/api/http";
+import { buildWhere, handleRouteError, jsonError, parseJson } from "@/lib/api/http";
 
 export const runtime = "nodejs";
 
@@ -19,25 +19,13 @@ export async function GET(req: Request): Promise<NextResponse> {
   try {
     await requireAdmin(req);
     const url = new URL(req.url);
-    const pillar = url.searchParams.get("pillar");
-    const partnerId = url.searchParams.get("partner_id");
     const active = url.searchParams.get("active");
 
-    const clauses: string[] = [];
-    const params: unknown[] = [];
-    if (pillar) {
-      params.push(pillar);
-      clauses.push(`settlement_pillar = $${params.length}`);
-    }
-    if (partnerId) {
-      params.push(partnerId);
-      clauses.push(`partner_id = $${params.length}`);
-    }
-    if (active != null) {
-      params.push(active === "true");
-      clauses.push(`active = $${params.length}`);
-    }
-    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const { where, params } = buildWhere([
+      ["settlement_pillar", url.searchParams.get("pillar")],
+      ["partner_id", url.searchParams.get("partner_id")],
+      ["active", active != null ? active === "true" : null],
+    ]);
 
     const rows = await getServiceDb().query(
       `select * from partner_offers ${where}

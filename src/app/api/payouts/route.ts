@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getServiceDb } from "@/lib/db/client";
-import { handleRouteError } from "@/lib/api/http";
+import { buildWhere, handleRouteError } from "@/lib/api/http";
 
 export const runtime = "nodejs";
 
@@ -16,25 +16,11 @@ export async function GET(req: Request): Promise<NextResponse> {
   try {
     await requireAdmin(req);
     const url = new URL(req.url);
-    const status = url.searchParams.get("status");
-    const ambassadorId = url.searchParams.get("ambassador_id");
-    const partnerId = url.searchParams.get("partner_id");
-
-    const clauses: string[] = [];
-    const params: unknown[] = [];
-    if (status) {
-      params.push(status);
-      clauses.push(`status = $${params.length}`);
-    }
-    if (ambassadorId) {
-      params.push(ambassadorId);
-      clauses.push(`ambassador_id = $${params.length}`);
-    }
-    if (partnerId) {
-      params.push(partnerId);
-      clauses.push(`partner_id = $${params.length}`);
-    }
-    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const { where, params } = buildWhere([
+      ["status", url.searchParams.get("status")],
+      ["ambassador_id", url.searchParams.get("ambassador_id")],
+      ["partner_id", url.searchParams.get("partner_id")],
+    ]);
 
     const db = getServiceDb();
     const rows = await db.query(

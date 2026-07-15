@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { AdminButton } from "./AdminButton";
 import { AdminBadge, partnerStatusTone } from "./AdminBadge";
+import { LicensingBadge } from "./LicensingBadge";
 import { DataTable, type Column } from "./DataTable";
 import { MaskedField } from "./MaskedField";
 import {
@@ -100,16 +101,12 @@ export function ApplicationsView() {
     {
       key: "licensing",
       header: "Licensing",
-      cell: (p) =>
-        p.licensed_required ? (
-          p.license_verified_at ? (
-            <AdminBadge tone="green">Verified</AdminBadge>
-          ) : (
-            <AdminBadge tone="amber">Unverified</AdminBadge>
-          )
-        ) : (
-          <span className="text-admin-ink-3">n/a</span>
-        ),
+      cell: (p) => (
+        <LicensingBadge
+          licensedRequired={p.licensed_required}
+          licenseVerifiedAt={p.license_verified_at}
+        />
+      ),
     },
     {
       key: "actions",

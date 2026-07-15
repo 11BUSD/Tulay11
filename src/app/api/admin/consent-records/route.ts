@@ -12,7 +12,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getServiceDb } from "@/lib/db/client";
-import { handleRouteError } from "@/lib/api/http";
+import { buildWhere, handleRouteError } from "@/lib/api/http";
 
 export const runtime = "nodejs";
 
@@ -27,13 +27,7 @@ export async function GET(req: Request): Promise<NextResponse> {
       500,
     );
 
-    const params: unknown[] = [];
-    const clauses: string[] = [];
-    if (purpose) {
-      params.push(purpose);
-      clauses.push(`purpose = $${params.length}`);
-    }
-    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const { where, params } = buildWhere([["purpose", purpose]]);
 
     const cols = `id, subject_id, subject_email_hash, purpose, data_categories,
                   shared_with, consent_text_version, basis, granted, ip_hash,

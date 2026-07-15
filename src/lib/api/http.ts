@@ -68,6 +68,35 @@ export function handleRouteError(err: unknown): NextResponse {
   return jsonError(500, message);
 }
 
+/**
+ * Build a parameterised `where` clause from a list of `[column, value]`
+ * filters. Skips absent filters (null / undefined / empty string) so callers
+ * can pass `searchParams.get(...)` results directly; keeps boolean `false`.
+ * Placeholders are numbered `$1..$n` in the order retained, so the returned
+ * `params` line up positionally. Callers may push additional params (e.g.
+ * limit/offset) onto the returned array afterwards.
+ *
+ * @example
+ *   const { where, params } = buildWhere([
+ *     ["status", status],
+ *     ["filipino_focus", filipino != null ? filipino === "true" : null],
+ *   ]);
+ *   db.query(`select * from partners ${where} order by created_at desc`, params);
+ */
+export function buildWhere(
+  filters: Array<[column: string, value: unknown]>,
+): { where: string; params: unknown[] } {
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  for (const [column, value] of filters) {
+    if (value === null || value === undefined || value === "") continue;
+    params.push(value);
+    clauses.push(`${column} = $${params.length}`);
+  }
+  const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+  return { where, params };
+}
+
 /** Best-effort client IP from proxy headers (hashed downstream, never raw). */
 export function clientIp(req: Request): string | null {
   const fwd = req.headers.get("x-forwarded-for");

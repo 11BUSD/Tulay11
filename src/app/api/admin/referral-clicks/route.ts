@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getServiceDb } from "@/lib/db/client";
-import { handleRouteError } from "@/lib/api/http";
+import { buildWhere, handleRouteError } from "@/lib/api/http";
 
 export const runtime = "nodejs";
 
@@ -17,24 +17,15 @@ export async function GET(req: Request): Promise<NextResponse> {
   try {
     await requireAdmin(req);
     const url = new URL(req.url);
-    const partnerOfferId = url.searchParams.get("partnerOfferId");
-    const ambassadorId = url.searchParams.get("ambassadorId");
     const limit = Math.min(
       Math.max(Number(url.searchParams.get("limit") ?? 50) || 50, 1),
       200,
     );
 
-    const clauses: string[] = [];
-    const params: unknown[] = [];
-    if (partnerOfferId) {
-      params.push(partnerOfferId);
-      clauses.push(`partner_offer_id = $${params.length}`);
-    }
-    if (ambassadorId) {
-      params.push(ambassadorId);
-      clauses.push(`ambassador_id = $${params.length}`);
-    }
-    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const { where, params } = buildWhere([
+      ["partner_offer_id", url.searchParams.get("partnerOfferId")],
+      ["ambassador_id", url.searchParams.get("ambassadorId")],
+    ]);
 
     const rows = await getServiceDb().query(
       `select id, referral_id, user_id, ambassador_id, partner_offer_id,

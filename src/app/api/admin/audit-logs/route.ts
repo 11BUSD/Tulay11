@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getServiceDb } from "@/lib/db/client";
-import { handleRouteError } from "@/lib/api/http";
+import { buildWhere, handleRouteError } from "@/lib/api/http";
 
 export const runtime = "nodejs";
 
@@ -18,32 +18,20 @@ export async function GET(req: Request): Promise<NextResponse> {
   try {
     await requireAdmin(req);
     const url = new URL(req.url);
-    const entityType = url.searchParams.get("entityType");
-    const action = url.searchParams.get("action");
-    const actorType = url.searchParams.get("actorType");
     const limit = Math.min(
       Math.max(Number(url.searchParams.get("limit") ?? 50) || 50, 1),
       200,
     );
     const offset = Math.max(Number(url.searchParams.get("offset") ?? 0) || 0, 0);
 
-    const clauses: string[] = [];
-    const params: unknown[] = [];
-    if (entityType) {
-      params.push(entityType);
-      clauses.push(`entity_type = $${params.length}`);
-    }
-    if (action) {
-      params.push(action);
-      clauses.push(`action = $${params.length}`);
-    }
-    if (actorType) {
-      params.push(actorType);
-      clauses.push(`actor_type = $${params.length}`);
-    }
-    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const { where, params } = buildWhere([
+      ["entity_type", url.searchParams.get("entityType")],
+      ["action", url.searchParams.get("action")],
+      ["actor_type", url.searchParams.get("actorType")],
+    ]);
 
     const db = getServiceDb();
+    const filterCount = params.length;
     params.push(limit);
     const limitIdx = params.length;
     params.push(offset);
@@ -60,7 +48,7 @@ export async function GET(req: Request): Promise<NextResponse> {
 
     const [{ count }] = await db.query<{ count: string }>(
       `select count(*)::text as count from audit_logs ${where}`,
-      params.slice(0, clauses.length),
+      params.slice(0, filterCount),
     );
 
     return NextResponse.json({

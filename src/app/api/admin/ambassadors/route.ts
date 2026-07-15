@@ -11,7 +11,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getServiceDb } from "@/lib/db/client";
-import { handleRouteError } from "@/lib/api/http";
+import { buildWhere, handleRouteError } from "@/lib/api/http";
 
 export const runtime = "nodejs";
 
@@ -19,20 +19,12 @@ export async function GET(req: Request): Promise<NextResponse> {
   try {
     await requireAdmin(req);
     const url = new URL(req.url);
-    const status = url.searchParams.get("status");
     const filipino = url.searchParams.get("filipinoFocus");
 
-    const clauses: string[] = [];
-    const params: unknown[] = [];
-    if (status) {
-      params.push(status);
-      clauses.push(`a.status = $${params.length}`);
-    }
-    if (filipino != null) {
-      params.push(filipino === "true");
-      clauses.push(`a.filipino_focus = $${params.length}`);
-    }
-    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const { where, params } = buildWhere([
+      ["a.status", url.searchParams.get("status")],
+      ["a.filipino_focus", filipino != null ? filipino === "true" : null],
+    ]);
 
     const rows = await getServiceDb().query(
       `select a.id, a.name, a.email, a.phone, a.referral_code, a.languages,

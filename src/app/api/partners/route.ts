@@ -10,7 +10,7 @@ import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getServiceDb } from "@/lib/db/client";
 import { recordAudit } from "@/lib/audit";
 import { partnerCreateSchema } from "@/lib/validation";
-import { handleRouteError, parseJson } from "@/lib/api/http";
+import { buildWhere, handleRouteError, parseJson } from "@/lib/api/http";
 
 export const runtime = "nodejs";
 
@@ -18,25 +18,13 @@ export async function GET(req: Request): Promise<NextResponse> {
   try {
     await requireAdmin(req);
     const url = new URL(req.url);
-    const status = url.searchParams.get("status");
-    const category = url.searchParams.get("category");
     const filipino = url.searchParams.get("filipino_focus");
 
-    const clauses: string[] = [];
-    const params: unknown[] = [];
-    if (status) {
-      params.push(status);
-      clauses.push(`status = $${params.length}`);
-    }
-    if (category) {
-      params.push(category);
-      clauses.push(`category = $${params.length}`);
-    }
-    if (filipino != null) {
-      params.push(filipino === "true");
-      clauses.push(`filipino_focus = $${params.length}`);
-    }
-    const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
+    const { where, params } = buildWhere([
+      ["status", url.searchParams.get("status")],
+      ["category", url.searchParams.get("category")],
+      ["filipino_focus", filipino != null ? filipino === "true" : null],
+    ]);
 
     const rows = await getServiceDb().query(
       `select * from partners ${where} order by created_at desc`,
