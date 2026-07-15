@@ -16,8 +16,8 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
-const MIGRATIONS_DIR = path.join(ROOT, "supabase", "migrations");
-const SEED_DIR = path.join(ROOT, "supabase", "seed");
+export const MIGRATIONS_DIR = path.join(ROOT, "supabase", "migrations");
+export const SEED_DIR = path.join(ROOT, "supabase", "seed");
 
 function requireDatabaseUrl() {
   const url = process.env.DATABASE_URL;
@@ -30,7 +30,7 @@ function requireDatabaseUrl() {
   return url;
 }
 
-async function sqlFilesIn(dir) {
+export async function sqlFilesIn(dir) {
   if (!existsSync(dir)) return [];
   const entries = await readdir(dir);
   return entries
@@ -39,7 +39,7 @@ async function sqlFilesIn(dir) {
     .map((f) => path.join(dir, f));
 }
 
-async function applyFiles(client, files) {
+export async function applyFiles(client, files) {
   if (files.length === 0) {
     console.log("  (no .sql files found — nothing to apply)");
     return;
@@ -52,17 +52,17 @@ async function applyFiles(client, files) {
   }
 }
 
-async function migrate(client) {
+export async function migrate(client) {
   console.log("Applying migrations:");
   await applyFiles(client, await sqlFilesIn(MIGRATIONS_DIR));
 }
 
-async function seed(client) {
+export async function seed(client) {
   console.log("Applying seed:");
   await applyFiles(client, await sqlFilesIn(SEED_DIR));
 }
 
-async function reset(client) {
+export async function reset(client) {
   console.log("Resetting public schema:");
   await client.query("DROP SCHEMA IF EXISTS public CASCADE;");
   await client.query("CREATE SCHEMA public;");
@@ -91,7 +91,14 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Only run the CLI when executed directly (`node scripts/db.mjs ...`), not when
+// imported by the Vitest test harness (src/test/db.ts).
+const invokedDirectly =
+  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
