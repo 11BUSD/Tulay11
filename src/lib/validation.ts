@@ -293,3 +293,45 @@ export const payoutSplitSchema = z.object({
   notes: z.string().nullish(),
 });
 export type PayoutSplitInput = z.infer<typeof payoutSplitSchema>;
+
+// ---------------------------------------------------------------------------
+// Agent + outreach route payloads (Task 13)
+// ---------------------------------------------------------------------------
+
+/** POST /api/outreach/import body — CSV text + optional campaign. */
+export const outreachImportSchema = z.object({
+  csv: z.string().min(1),
+  campaign_id: uuidSchema.nullish(),
+});
+export type OutreachImportInput = z.infer<typeof outreachImportSchema>;
+
+/** POST /api/agents/run body — trigger an agent run. */
+export const agentRunSchema = z.object({
+  agent_key: z.string().min(1),
+  input: z.unknown(),
+  entity_id: z.string().nullish(),
+  related_partner_id: uuidSchema.nullish(),
+  related_contact_id: uuidSchema.nullish(),
+  related_campaign_id: uuidSchema.nullish(),
+});
+export type AgentRunInput = z.infer<typeof agentRunSchema>;
+
+/** POST /api/agents/tick body — cron drain. */
+export const agentTickSchema = z.object({
+  limit: z.number().int().positive().max(50).default(5),
+});
+export type AgentTickInput = z.infer<typeof agentTickSchema>;
+
+/** POST /api/outreach/messages/[id]/reject body. */
+export const outreachRejectSchema = z.object({
+  reason: z.string().min(1),
+});
+export type OutreachRejectInput = z.infer<typeof outreachRejectSchema>;
+
+/** POST /api/outreach/replies body — log a reply. */
+export const outreachReplySchema = z.object({
+  message_id: uuidSchema,
+  body: z.string().nullish(),
+  meeting_booked: z.boolean().default(false),
+});
+export type OutreachReplyInput = z.infer<typeof outreachReplySchema>;

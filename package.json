@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "^2.45.4",
     "next": "^15.1.0",
     "next-intl": "^3.26.0",
+    "openai": "^6.47.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.4.3"
