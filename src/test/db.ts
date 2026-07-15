@@ -11,6 +11,7 @@
  * mirrors how server routes talk to the database (service role bypasses RLS).
  */
 import pg from "pg";
+import { wrapServiceDb, type ServiceDb } from "@/lib/db/client";
 
 /** Resolve the database URL used by integration tests. */
 export function getTestDatabaseUrl(): string {
@@ -58,6 +59,15 @@ export interface ServiceQuery {
 /** Return the service-role-like query interface backed by the test pool. */
 export function getServiceQuery(): ServiceQuery {
   return { query };
+}
+
+/**
+ * Return a full `ServiceDb` (query + transaction) backed by the test pool. Lib
+ * code takes an injectable `ServiceDb`, so integration tests pass this so the
+ * production code path runs against `TEST_DATABASE_URL`.
+ */
+export function getTestServiceDb(): ServiceDb {
+  return wrapServiceDb(getTestPool());
 }
 
 /** Close the pool — call in test teardown to let the process exit cleanly. */

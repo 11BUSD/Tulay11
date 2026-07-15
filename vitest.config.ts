@@ -1,6 +1,16 @@
 import { defineConfig } from "vitest/config";
+import { loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
+
+// Load `.env.local` / `.env` into process.env so integration suites can reach
+// the local Postgres (DATABASE_URL / TEST_DATABASE_URL) and read hashing salts.
+// Vite's loadEnv only reads `VITE_`-prefixed vars into import.meta.env; we copy
+// everything into process.env here (config runs in Node before the suite).
+const loadedEnv = loadEnv("", process.cwd(), "");
+for (const [key, value] of Object.entries(loadedEnv)) {
+  if (process.env[key] === undefined) process.env[key] = value;
+}
 
 export default defineConfig({
   plugins: [react()],
