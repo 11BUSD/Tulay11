@@ -80,6 +80,83 @@ export const dataRequestInputSchema = z
   });
 export type DataRequestInput = z.infer<typeof dataRequestInputSchema>;
 
+// ---------------------------------------------------------------------------
+// Consumer app (userapp) route payloads (Tasks 14-18)
+// ---------------------------------------------------------------------------
+
+/**
+ * Embedded consent payload carried by a lead submission. Mirrors the columns of
+ * a ConsentRecord so `POST /api/leads` can persist the full grant. `granted`
+ * MUST be true for the lead to be accepted.
+ */
+export const leadConsentSchema = z.object({
+  purpose: consentPurposeSchema.default("lead_referral"),
+  dataCategories: z.array(z.string()).min(1),
+  sharedWith: z.string().min(1),
+  consequencesText: z.string().min(1),
+  consentTextVersion: z.string().min(1),
+  basis: consentBasisSchema.default("express"),
+  granted: z.boolean(),
+});
+export type LeadConsentInput = z.infer<typeof leadConsentSchema>;
+
+/** POST /api/leads body — a lead submission with an embedded consent grant. */
+export const leadInputSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  phone: z.string().nullish(),
+  city: z.string().nullish(),
+  pillar: z.string().min(1),
+  offerId: uuidSchema.nullish(),
+  partnerId: uuidSchema.nullish(),
+  partnerName: z.string().nullish(),
+  consent: leadConsentSchema,
+});
+export type LeadInput = z.infer<typeof leadInputSchema>;
+
+/** POST /api/saved body — save an offer/resource for later. */
+export const savedCreateSchema = z.object({
+  subjectRef: z.string().min(1),
+  offerId: uuidSchema.nullish(),
+  pillar: z.string().nullish(),
+  title: z.string().min(1),
+  url: z.string().nullish(),
+});
+export type SavedCreateInput = z.infer<typeof savedCreateSchema>;
+
+/** DELETE /api/saved body — remove a saved row. */
+export const savedDeleteSchema = z.object({
+  subjectRef: z.string().min(1),
+  id: uuidSchema,
+});
+export type SavedDeleteInput = z.infer<typeof savedDeleteSchema>;
+
+/** PATCH /api/profile body — update the editable profile fields. */
+export const profileUpdateSchema = z
+  .object({
+    id: uuidSchema.optional(),
+    displayName: z.string().min(1).nullish(),
+    preferredLanguage: z.enum(["en", "tl"]).optional(),
+    city: z.string().nullish(),
+  })
+  .refine(
+    (v) =>
+      v.displayName !== undefined ||
+      v.preferredLanguage !== undefined ||
+      v.city !== undefined,
+    { message: "At least one field is required" },
+  );
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+/** POST /api/concierge/chat body — a single concierge turn. */
+export const conciergeChatSchema = z.object({
+  message: z.string().min(1),
+  /** Optional settlement-pillar slug the question is about. */
+  pillar: z.string().nullish(),
+  lang: z.enum(["en", "tl"]).default("en"),
+});
+export type ConciergeChatInput = z.infer<typeof conciergeChatSchema>;
+
 /** Unsubscribe channels. */
 export const unsubscribeChannelSchema = z.enum(["email", "sms", "all"]);
 export type UnsubscribeChannel = z.infer<typeof unsubscribeChannelSchema>;
