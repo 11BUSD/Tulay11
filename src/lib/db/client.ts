@@ -77,9 +77,28 @@ export function wrapServiceDb(queryable: Pool | PoolClient): ServiceDb {
   };
 }
 
-/** Return the process-wide `ServiceDb` backed by the pool. */
+/**
+ * Optional override for the process-wide `ServiceDb`. Route handlers call
+ * `getServiceDb()` internally (no injectable `db` param like lib functions), so
+ * integration tests set this to a `ServiceDb` bound to `TEST_DATABASE_URL` and
+ * clear it in teardown. Mirrors the injectable actor resolver in `auth/roles`.
+ * `undefined` (the default) means "use the DATABASE_URL pool".
+ */
+let serviceDbOverride: ServiceDb | undefined;
+
+/** Inject the `ServiceDb` used by `getServiceDb()` (tests/server contexts). */
+export function setServiceDb(db: ServiceDb | undefined): void {
+  serviceDbOverride = db;
+}
+
+/** Clear any injected `ServiceDb`, restoring the DATABASE_URL-backed pool. */
+export function clearServiceDb(): void {
+  serviceDbOverride = undefined;
+}
+
+/** Return the process-wide `ServiceDb` (the injected override, if any). */
 export function getServiceDb(): ServiceDb {
-  return wrapServiceDb(getPool());
+  return serviceDbOverride ?? wrapServiceDb(getPool());
 }
 
 /**

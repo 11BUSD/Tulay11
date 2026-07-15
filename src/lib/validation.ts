@@ -8,6 +8,19 @@
  */
 import { z } from "zod";
 
+/**
+ * Lenient UUID string. Postgres `gen_random_uuid()` and our seed ids are
+ * accepted by shape (8-4-4-4-12 hex) rather than by RFC-4122 version/variant
+ * nibbles, since zod's strict `.uuid()` rejects some valid Postgres UUIDs (and
+ * our fixed seed ids like `3333...`).
+ */
+export const uuidSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "Invalid UUID",
+  );
+
 /** Non-negative integer cents. */
 export const centsSchema = z.number().int().nonnegative();
 
@@ -95,3 +108,188 @@ export const commissionRuleSchema = z.object({
   min_value_cents: centsSchema.nullish(),
   max_value_cents: centsSchema.nullish(),
 });
+
+// ---------------------------------------------------------------------------
+// Partner / Offer OS route payloads (Task 6)
+// ---------------------------------------------------------------------------
+
+/** Partner lifecycle status (mirrors the `partner_status` enum). */
+export const partnerStatusSchema = z.enum([
+  "prospect",
+  "contacted",
+  "in_review",
+  "active",
+  "paused",
+  "rejected",
+]);
+
+/** Offer surface type (mirrors the `offer_type` enum). */
+export const offerTypeSchema = z.enum([
+  "referral",
+  "affiliate_link",
+  "coupon",
+  "manual_intro",
+  "lead_form",
+  "sponsored",
+]);
+
+/** POST /api/partners body — create a partner. */
+export const partnerCreateSchema = z.object({
+  name: z.string().min(1),
+  category: z.string().nullish(),
+  website: z.string().nullish(),
+  contact_email: z.string().email().nullish(),
+  phone: z.string().nullish(),
+  location: z.string().nullish(),
+  languages_supported: z.array(z.string()).default([]),
+  newcomer_focus: z.boolean().default(false),
+  filipino_focus: z.boolean().default(false),
+  ontario_focus: z.boolean().default(false),
+  licensed_required: z.boolean().default(false),
+  license_type: z.string().nullish(),
+  license_number: z.string().nullish(),
+  regulator: z.string().nullish(),
+  status: partnerStatusSchema.default("prospect"),
+  notes: z.string().nullish(),
+});
+export type PartnerCreateInput = z.infer<typeof partnerCreateSchema>;
+
+/** A license verification to append (writes a `license_verifications` row). */
+export const licenseVerificationSchema = z.object({
+  license_type: z.string().nullish(),
+  license_number: z.string().nullish(),
+  regulator: z.string().nullish(),
+  method: z.string().nullish(),
+  /** 'verified' sets partners.license_verified_at; other results do not. */
+  result: z.enum(["verified", "failed", "expired"]),
+  evidence_url: z.string().nullish(),
+});
+export type LicenseVerificationInput = z.infer<
+  typeof licenseVerificationSchema
+>;
+
+/** PATCH /api/partners/[id] body — partial update + optional license check. */
+export const partnerUpdateSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    category: z.string().nullish(),
+    website: z.string().nullish(),
+    contact_email: z.string().email().nullish(),
+    phone: z.string().nullish(),
+    location: z.string().nullish(),
+    languages_supported: z.array(z.string()).optional(),
+    newcomer_focus: z.boolean().optional(),
+    filipino_focus: z.boolean().optional(),
+    ontario_focus: z.boolean().optional(),
+    licensed_required: z.boolean().optional(),
+    license_type: z.string().nullish(),
+    license_number: z.string().nullish(),
+    regulator: z.string().nullish(),
+    status: partnerStatusSchema.optional(),
+    notes: z.string().nullish(),
+    /** When present, append a license_verifications row via the compliance path. */
+    license_verification: licenseVerificationSchema.optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "At least one field is required",
+  });
+export type PartnerUpdateInput = z.infer<typeof partnerUpdateSchema>;
+
+/** POST /api/offers body — create an offer. */
+export const offerCreateSchema = z.object({
+  partner_id: uuidSchema,
+  title: z.string().min(1),
+  description: z.string().nullish(),
+  settlement_pillar: z.string().min(1),
+  offer_type: offerTypeSchema.default("referral"),
+  destination_url: z.string().nullish(),
+  tracking_code: z.string().min(1).nullish(),
+  commission_type: commissionTypeSchema.default("fixed"),
+  commission_value_cents: centsSchema.default(0),
+  user_reward_value_cents: centsSchema.default(0),
+  eligibility_rules: z.record(z.string(), z.unknown()).default({}),
+  city_targets: z.array(z.string()).default([]),
+  language_targets: z.array(z.string()).default([]),
+  active: z.boolean().default(true),
+  priority_score: z.number().int().default(0),
+  compliance_notes: z.string().nullish(),
+  status: z.enum(["pending", "live", "paused"]).default("live"),
+});
+export type OfferCreateInput = z.infer<typeof offerCreateSchema>;
+
+/** PATCH /api/offers/[id] body — partial update. */
+export const offerUpdateSchema = z
+  .object({
+    title: z.string().min(1).optional(),
+    description: z.string().nullish(),
+    settlement_pillar: z.string().min(1).optional(),
+    offer_type: offerTypeSchema.optional(),
+    destination_url: z.string().nullish(),
+    tracking_code: z.string().min(1).nullish(),
+    commission_type: commissionTypeSchema.optional(),
+    commission_value_cents: centsSchema.optional(),
+    user_reward_value_cents: centsSchema.optional(),
+    eligibility_rules: z.record(z.string(), z.unknown()).optional(),
+    city_targets: z.array(z.string()).optional(),
+    language_targets: z.array(z.string()).optional(),
+    active: z.boolean().optional(),
+    priority_score: z.number().int().optional(),
+    compliance_notes: z.string().nullish(),
+    status: z.enum(["pending", "live", "paused"]).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "At least one field is required",
+  });
+export type OfferUpdateInput = z.infer<typeof offerUpdateSchema>;
+
+/** POST /api/attribution body — record a revenue attribution event. */
+export const attributionInputSchema = z.object({
+  event_type: z.enum(["click", "conversion", "payout", "manual"]),
+  partner_id: uuidSchema.nullish(),
+  partner_offer_id: uuidSchema.nullish(),
+  conversion_id: uuidSchema.nullish(),
+  ambassador_id: uuidSchema.nullish(),
+  amount_cents: centsSchema.default(0),
+  currency: z.string().default("CAD"),
+  metadata: z.record(z.string(), z.unknown()).default({}),
+});
+export type AttributionInput = z.infer<typeof attributionInputSchema>;
+
+// ---------------------------------------------------------------------------
+// Referral / conversion / payout route payloads (Task 7)
+// ---------------------------------------------------------------------------
+
+/** POST /api/referrals/conversion body. */
+export const conversionInputSchema = z.object({
+  referral_id: z.string().min(1),
+  partner_id: uuidSchema.nullish(),
+  /** Free-text conversion type; 'lead_form' variants require a consent record. */
+  conversion_type: z.string().min(1),
+  conversion_value_cents: centsSchema.default(0),
+  /** Idempotency key → stored as external_conversion_id. */
+  external_reference: z.string().min(1).nullish(),
+  /** Consent subject (needed for lead_form conversions). */
+  subject_id: uuidSchema.nullish(),
+  subject_email: z.string().email().nullish(),
+  metadata: z.record(z.string(), z.unknown()).default({}),
+});
+export type ConversionInput = z.infer<typeof conversionInputSchema>;
+
+/** PATCH /api/payouts/[id]/status body — state machine transition. */
+export const payoutStatusUpdateSchema = z.object({
+  status: z.enum(["pending", "approved", "paid", "rejected"]),
+  notes: z.string().nullish(),
+  external_ref: z.string().nullish(),
+});
+export type PayoutStatusUpdateInput = z.infer<
+  typeof payoutStatusUpdateSchema
+>;
+
+/** POST /api/payouts/[id]/splits body — create an ambassador split payout. */
+export const payoutSplitSchema = z.object({
+  ambassador_id: uuidSchema.nullish(),
+  /** Override split; defaults to the ambassador's split_percentage_bps. */
+  split_bps: bpsSchema.nullish(),
+  notes: z.string().nullish(),
+});
+export type PayoutSplitInput = z.infer<typeof payoutSplitSchema>;
