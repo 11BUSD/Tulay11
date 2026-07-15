@@ -138,15 +138,23 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     // Non-regulated → ask the LLM (mock in test/CI/no-key), then guardrail it.
+    // The provider call hits an external network dependency (rate limits,
+    // outages, timeouts). Never let its raw error surface to the client —
+    // degrade to the safe fallback reply instead of a 500.
     const provider = getLLMProvider();
-    const completion = await provider.complete({
-      promptTag: "concierge-chat",
-      temperature: 0.3,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: input.message },
-      ],
-    });
+    let completion;
+    try {
+      completion = await provider.complete({
+        promptTag: "concierge-chat",
+        temperature: 0.3,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: input.message },
+        ],
+      });
+    } catch {
+      return NextResponse.json({ reply: SAFE_FALLBACK, regulated: false });
+    }
 
     // The mock provider (test/CI/no-key) has no concierge fixture and returns a
     // JSON echo, which is not a user-facing answer — substitute a clean, safe

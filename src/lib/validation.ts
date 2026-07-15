@@ -44,7 +44,7 @@ export type ConsentBasis = z.infer<typeof consentBasisSchema>;
 /** POST /api/consent body. */
 export const consentInputSchema = z
   .object({
-    subjectId: z.string().uuid().nullish(),
+    subjectId: uuidSchema.nullish(),
     subjectEmail: z.string().email().nullish(),
     purpose: consentPurposeSchema,
     dataCategories: z.array(z.string()).default([]),
@@ -67,7 +67,7 @@ export type DataRequestKind = z.infer<typeof dataRequestKindSchema>;
 /** POST /api/data-requests body. */
 export const dataRequestInputSchema = z
   .object({
-    subjectId: z.string().uuid().nullish(),
+    subjectId: uuidSchema.nullish(),
     subjectEmail: z.string().email().nullish(),
     kind: dataRequestKindSchema,
     /** User confirmed via emailed link (required before processing). */
