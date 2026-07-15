@@ -135,6 +135,37 @@ describe.skipIf(!hasDb)("admin BFF routes", () => {
       const body = await byPartner.json();
       expect(body.total_cents).toBeGreaterThanOrEqual(12345);
     });
+
+    it("excludes disbursement 'payout' and engagement 'click' events from revenue", async () => {
+      asAdmin();
+
+      const totalOf = async () => {
+        const res = await revenueGet(
+          getRequest(`${BASE}/revenue?groupBy=partner`),
+        );
+        expect(res.status).toBe(200);
+        return (await res.json()).total_cents as number;
+      };
+
+      const before = await totalOf();
+
+      // A 'conversion' earning event (counts) plus a 'payout' disbursement
+      // event (the ambassador cut, already inside the conversion commission)
+      // and a 'click' engagement event (no money). Only the conversion's 5000
+      // must move the total — the payout/click must not double-count.
+      await query(
+        `insert into revenue_attribution_events
+           (event_type, partner_id, amount_cents, currency, metadata)
+         values ('conversion', $1, 5000, 'CAD', '{}'::jsonb),
+                ('payout',     $1, 1000, 'CAD', '{}'::jsonb),
+                ('click',      $1,    0, 'CAD', '{}'::jsonb)`,
+        [PARTNER_ID],
+      );
+
+      const after = await totalOf();
+      // Delta is exactly the conversion amount — NOT 5000 + 1000.
+      expect(after - before).toBe(5000);
+    });
   });
 
   // --- Audit log (append-only) ----------------------------------------------

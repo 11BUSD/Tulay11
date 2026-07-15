@@ -22,6 +22,7 @@ import {
 } from "@/lib/referral";
 import { resolveActor } from "@/lib/auth/roles";
 import { clientIp, handleRouteError, jsonError } from "@/lib/api/http";
+import { REFERRAL_COOKIE } from "@/lib/api/referrals";
 
 export const runtime = "nodejs";
 
@@ -62,8 +63,12 @@ export async function GET(req: Request): Promise<NextResponse> {
     const anonymousId =
       url.searchParams.get("anon") ?? readCookie(req, "tulay_anon") ?? null;
 
-    // Ambassador resolution from ?ref= referral_code.
-    const refCode = url.searchParams.get("ref");
+    // Ambassador resolution: explicit ?ref= wins, else the `tulay_ref`
+    // attribution cookie set by the /r/<code> deep-link entry point (so the
+    // normal deep-link → browse → offer-click flow still credits the
+    // ambassador even though no ?ref= is present on the offer link).
+    const refCode =
+      url.searchParams.get("ref") ?? readCookie(req, REFERRAL_COOKIE);
     let ambassadorId: string | null = null;
     if (refCode) {
       const [amb] = await db.query<{ id: string }>(

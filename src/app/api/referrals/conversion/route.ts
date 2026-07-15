@@ -201,41 +201,44 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
       const conversionId = (conversion as { id: string }).id;
 
-      // Primary PENDING payout: payee = ambassador when the click had one,
-      // else the partner. Amount = the full commission.
-      const payeeType = click.ambassador_id ? "ambassador" : "partner";
+      // Resolve the ambassador split first so the parent payout can be booked
+      // for the REMAINDER (never the full commission when a split exists) —
+      // otherwise the parent + child rows would double-count the split amount
+      // in liability summaries. Parent is always the partner/house side; the
+      // child (if any) is the ambassador's cut. parent + child == commission.
+      let splitBps = 0;
+      if (click.ambassador_id) {
+        const [amb] = await tx.query<{ split_percentage_bps: number }>(
+          "select split_percentage_bps from ambassadors where id = $1",
+          [click.ambassador_id],
+        );
+        splitBps = amb?.split_percentage_bps ?? 0;
+      }
+      const { ambassadorCents, remainderCents } = splitCommission(
+        commission,
+        splitBps,
+      );
+      // When there is no ambassador the parent holds the full commission.
+      const parentCents = click.ambassador_id ? remainderCents : commission;
+
+      // Primary PENDING payout — always the partner/house side.
       const [parentPayout] = await tx.query<{ id: string; amount_cents: string }>(
         `insert into payouts
            (conversion_id, ambassador_id, partner_id, payee_type, amount_cents,
             status)
-         values ($1,$2,$3,$4,$5,'pending')
+         values ($1,$2,$3,'partner',$4,'pending')
          returning id, amount_cents`,
-        [
-          conversionId,
-          click.ambassador_id,
-          offer.partner_id,
-          payeeType,
-          commission,
-        ],
+        [conversionId, null, offer.partner_id, parentCents],
       );
       const parentId = (parentPayout as { id: string }).id;
 
-      // 6. Ambassador split (only when the click carried an ambassador).
+      // 6. Ambassador split child payout (only when the click carried one).
       let split: {
         payoutId: string;
         ambassadorCents: number;
         remainderCents: number;
       } | null = null;
       if (click.ambassador_id) {
-        const [amb] = await tx.query<{ split_percentage_bps: number }>(
-          "select split_percentage_bps from ambassadors where id = $1",
-          [click.ambassador_id],
-        );
-        const splitBps = amb?.split_percentage_bps ?? 0;
-        const { ambassadorCents, remainderCents } = splitCommission(
-          commission,
-          splitBps,
-        );
         const [splitPayout] = await tx.query<{ id: string }>(
           `insert into payouts
              (conversion_id, ambassador_id, partner_id, payee_type, amount_cents,

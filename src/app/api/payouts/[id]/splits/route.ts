@@ -40,6 +40,30 @@ export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
       }>("select * from payouts where id = $1", [id]);
       if (!parent) return { kind: "not_found" as const };
 
+      // A paid parent is immutable (the DB trigger would reject the reducing
+      // UPDATE below anyway) — reject the split before doing any work.
+      if (parent.status === "paid") return { kind: "parent_paid" as const };
+
+      // Idempotency / no double-booking: if this parent already has a child
+      // split payout, return it untouched rather than stacking another child
+      // (and reducing the parent again). Splits are one-per-parent.
+      const [existingChild] = await tx.query<{
+        id: string;
+        amount_cents: string;
+      }>(
+        "select id, amount_cents from payouts where parent_payout_id = $1 limit 1",
+        [parent.id],
+      );
+      if (existingChild) {
+        return {
+          kind: "ok" as const,
+          split_payout: existingChild,
+          ambassador_cents: Number(existingChild.amount_cents),
+          remainder_cents: Number(parent.amount_cents),
+          idempotent: true,
+        };
+      }
+
       // Resolve the ambassador: explicit → parent → parent's conversion click.
       let ambassadorId = input.ambassador_id ?? parent.ambassador_id ?? null;
       if (!ambassadorId && parent.conversion_id) {
@@ -80,6 +104,14 @@ export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
         ],
       );
       const childId = (child as { id: string }).id;
+
+      // Reduce the parent to the remainder so parent + child == the original
+      // amount (no inflated liability, no double-pay). Parent is not paid
+      // (guarded above), so this UPDATE is permitted.
+      await tx.query(
+        "update payouts set amount_cents = $2 where id = $1",
+        [parent.id, remainderCents],
+      );
 
       await tx.query(
         `insert into ambassador_referrals
@@ -124,10 +156,14 @@ export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
         split_payout: child,
         ambassador_cents: ambassadorCents,
         remainder_cents: remainderCents,
+        idempotent: false,
       };
     });
 
     if (outcome.kind === "not_found") return jsonError(404, "Payout not found");
+    if (outcome.kind === "parent_paid") {
+      return jsonError(409, "Cannot split a paid payout");
+    }
     if (outcome.kind === "no_ambassador") {
       return jsonError(422, "No ambassador resolved for this payout split");
     }
@@ -136,8 +172,10 @@ export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
         split_payout: outcome.split_payout,
         ambassador_cents: outcome.ambassador_cents,
         remainder_cents: outcome.remainder_cents,
+        idempotent: outcome.idempotent ?? false,
       },
-      { status: 201 },
+      // An existing split is returned idempotently (200); a new one is 201.
+      { status: outcome.idempotent ? 200 : 201 },
     );
   } catch (err) {
     return handleRouteError(err);

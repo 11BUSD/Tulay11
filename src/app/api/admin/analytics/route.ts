@@ -131,9 +131,14 @@ export async function GET(req: Request): Promise<NextResponse> {
     );
 
     // --- Revenue ------------------------------------------------------------
+    // Revenue = EARNING events only ('conversion' | 'manual'). 'payout' events
+    // are disbursement records (the ambassador cut, already inside the
+    // conversion commission) and 'click' events carry no money; including them
+    // would double-count the ambassador split against its conversion.
     const [{ revenue }] = await db.query<{ revenue: string }>(
       `select coalesce(sum(amount_cents), 0)::text as revenue
-         from revenue_attribution_events`,
+         from revenue_attribution_events
+        where event_type in ('conversion', 'manual')`,
     );
     const partnerRows = await db.query<{
       partner: string | null;
@@ -143,6 +148,7 @@ export async function GET(req: Request): Promise<NextResponse> {
               coalesce(sum(e.amount_cents), 0)::text as revenue_cents
          from revenue_attribution_events e
          left join partners p on p.id = e.partner_id
+        where e.event_type in ('conversion', 'manual')
         group by p.name
         order by coalesce(sum(e.amount_cents), 0) desc`,
     );

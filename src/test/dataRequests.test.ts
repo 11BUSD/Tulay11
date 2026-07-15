@@ -27,6 +27,12 @@ describe.skipIf(!hasDb)("dataRequests", () => {
       "insert into users (email, display_name, city) values ($1, 'Test User', 'Toronto') returning id",
       [email],
     );
+    // profiles shares the subject id and holds self-serve PII (display_name,
+    // city) — create the matching row so delete/export cover both tables.
+    await query(
+      "insert into profiles (id, role, display_name, city) values ($1, 'user', 'Test User', 'Toronto')",
+      [u.id],
+    );
     return u.id;
   }
 
@@ -66,6 +72,7 @@ describe.skipIf(!hasDb)("dataRequests", () => {
     expect(request.status).toBe("completed");
     expect(request.completed_at).toBeTruthy();
     expect((bundle.user as { id: string }).id).toBe(userId);
+    expect((bundle.profile as { id: string }).id).toBe(userId);
     expect(bundle.consentHistory.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -105,7 +112,7 @@ describe.skipIf(!hasDb)("dataRequests", () => {
     );
     expect(done.status).toBe("completed");
 
-    // Source PII anonymized in place.
+    // Source PII anonymized in place — in BOTH users and profiles.
     const [user] = await query<{
       email: string;
       display_name: string | null;
@@ -114,6 +121,13 @@ describe.skipIf(!hasDb)("dataRequests", () => {
     expect(user.email).toContain("deleted.invalid");
     expect(user.display_name).toBeNull();
     expect(user.city).toBeNull();
+
+    const [profile] = await query<{
+      display_name: string | null;
+      city: string | null;
+    }>("select display_name, city from profiles where id = $1", [userId]);
+    expect(profile.display_name).toBeNull();
+    expect(profile.city).toBeNull();
 
     // Original consent row retained (append-only), untouched.
     const consentRows = await query<{ id: string }>(

@@ -91,6 +91,29 @@ describe.skipIf(!hasDb)("referral/conversion/payout routes", () => {
     expect(rows[0].user_agent).toBe("vitest-agent");
   });
 
+  it("click credits the ambassador from the tulay_ref cookie when no ?ref= is present", async () => {
+    useTestDb();
+    resetHarness();
+    useTestDb();
+    // Deep-link flow: /r/<code> set the tulay_ref cookie earlier; the offer
+    // click carries no ?ref= but must still credit the ambassador.
+    const oid = await offerId(BANKING_OFFER);
+    const res = await click(
+      getRequest(`${BASE}/referrals/click?offer=${oid}`, {
+        cookie: `tulay_ref=${AMB_CODE}`,
+      }),
+    );
+    expect(res.status).toBe(302);
+    const referralId = new URL(res.headers.get("location")!).searchParams.get(
+      "referral_id",
+    );
+    const rows = await query<{ ambassador_id: string | null }>(
+      "select ambassador_id from referral_clicks where referral_id = $1",
+      [referralId],
+    );
+    expect(rows[0].ambassador_id).toBe("33333333-3333-3333-3333-333333333301");
+  });
+
   it("conversion (no ambassador) computes integer commission + pending payout + audit + attribution", async () => {
     useTestDb();
     resetHarness();
@@ -215,12 +238,15 @@ describe.skipIf(!hasDb)("referral/conversion/payout routes", () => {
     expect(conv.split.remainderCents).toBe(1200);
     expect(conv.split.ambassadorCents + conv.split.remainderCents).toBe(commission);
 
-    // Parent payout is ambassador-payee; split payout links to parent.
+    // Parent payout is the PARTNER/house side and holds the REMAINDER (1200),
+    // NOT the full commission — so parent + child == commission with no
+    // double-count. The child ambassador payout links to the parent.
     const parent = await query<{ payee_type: string; amount_cents: string }>(
       "select payee_type, amount_cents from payouts where id = $1",
       [conv.payout_id],
     );
-    expect(parent[0].payee_type).toBe("ambassador");
+    expect(parent[0].payee_type).toBe("partner");
+    expect(Number(parent[0].amount_cents)).toBe(1200);
 
     const splitRows = await query<{ parent_payout_id: string; amount_cents: string }>(
       "select parent_payout_id, amount_cents from payouts where id = $1",
@@ -229,12 +255,21 @@ describe.skipIf(!hasDb)("referral/conversion/payout routes", () => {
     expect(splitRows[0].parent_payout_id).toBe(conv.payout_id);
     expect(Number(splitRows[0].amount_cents)).toBe(300);
 
-    // ambassador_referrals row written.
-    const ar = await query(
-      "select id from ambassador_referrals where conversion_id = $1",
+    // Regression: the SUM of all payout rows for this conversion equals the
+    // commission (1500) — the split does not inflate liability.
+    const payoutSum = await query<{ total: string }>(
+      "select coalesce(sum(amount_cents),0)::text as total from payouts where conversion_id = $1",
+      [conv.conversion.id],
+    );
+    expect(Number(payoutSum[0].total)).toBe(1500);
+
+    // ambassador_referrals row written for the ambassador's cut only.
+    const ar = await query<{ attributed_amount_cents: string }>(
+      "select attributed_amount_cents from ambassador_referrals where conversion_id = $1",
       [conv.conversion.id],
     );
     expect(ar.length).toBeGreaterThanOrEqual(1);
+    expect(Number(ar[0].attributed_amount_cents)).toBe(300);
   });
 
   it("lead_form conversion without consent is rejected (403); with consent succeeds", async () => {
@@ -406,6 +441,45 @@ describe.skipIf(!hasDb)("referral/conversion/payout routes", () => {
     expect(split.remainder_cents).toBe(4000);
     expect(split.ambassador_cents + split.remainder_cents).toBe(5000);
     expect(split.split_payout.parent_payout_id).toBe(payoutId);
+
+    // Parent payout is REDUCED to the remainder (4000), not left at 5000 —
+    // otherwise the split would inflate liability by the ambassador's cut.
+    const parentAfter = await query<{ amount_cents: string }>(
+      "select amount_cents from payouts where id = $1",
+      [payoutId],
+    );
+    expect(Number(parentAfter[0].amount_cents)).toBe(4000);
+
+    // Regression: sum of all payout rows for the conversion == commission 5000.
+    const convId = split.split_payout.conversion_id as string;
+    const sum = await query<{ total: string }>(
+      "select coalesce(sum(amount_cents),0)::text as total from payouts where conversion_id = $1",
+      [convId],
+    );
+    expect(Number(sum[0].total)).toBe(5000);
+
+    // Idempotency: splitting the same parent again returns the existing child
+    // (200), does NOT stack a second child, and does NOT reduce the parent again.
+    const splitAgain = await payoutSplit(
+      jsonRequest(`${BASE}/payouts/${payoutId}/splits`, "POST", {
+        ambassador_id: "33333333-3333-3333-3333-333333333301",
+        split_bps: 2000,
+      }),
+      ctx(payoutId),
+    );
+    expect(splitAgain.status).toBe(200);
+    const again = await splitAgain.json();
+    expect(again.idempotent).toBe(true);
+    const children = await query<{ id: string }>(
+      "select id from payouts where parent_payout_id = $1",
+      [payoutId],
+    );
+    expect(children.length).toBe(1);
+    const sumAfter = await query<{ total: string }>(
+      "select coalesce(sum(amount_cents),0)::text as total from payouts where conversion_id = $1",
+      [convId],
+    );
+    expect(Number(sumAfter[0].total)).toBe(5000);
 
     // Audit written for the split.
     const audits = await query<{ action: string }>(

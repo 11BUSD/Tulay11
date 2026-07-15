@@ -137,6 +137,7 @@ export class DataRequestNotVerifiedError extends Error {
 export interface ExportBundle {
   subjectId: string | null;
   user: Record<string, unknown> | null;
+  profile: Record<string, unknown> | null;
   consentHistory: Record<string, unknown>[];
   referralClicks: Record<string, unknown>[];
   referralConversions: Record<string, unknown>[];
@@ -175,6 +176,17 @@ export async function processExport(
         )[0] ?? null
       : null;
 
+    // profiles shares the subject id with users and holds self-serve PII, so
+    // it belongs in the export too.
+    const profile = request.subject_id
+      ? (
+          await tx.query<Record<string, unknown>>(
+            "select * from profiles where id = $1",
+            [request.subject_id],
+          )
+        )[0] ?? null
+      : null;
+
     const consentHistory = await tx.query<Record<string, unknown>>(
       `select * from consent_records
          where ($1::uuid is not null and subject_id = $1)
@@ -200,6 +212,7 @@ export async function processExport(
     const bundle: ExportBundle = {
       subjectId: request.subject_id,
       user,
+      profile,
       consentHistory,
       referralClicks,
       referralConversions,
@@ -255,13 +268,22 @@ export async function processDelete(
         retainedHash = hashEmail(existing.email);
       }
 
-      // Anonymize source PII in place (users has no append-only guard).
+      // Anonymize source PII in place (neither users nor profiles has an
+      // append-only guard). profiles shares the subject id with users and the
+      // self-serve profile UI writes PII (display_name, city) there, so BOTH
+      // rows must be scrubbed or a delete keyed by that id leaves PII behind.
       const anonId = `deleted-${request.subject_id}`;
       await tx.query(
         `update users
            set email = $2, display_name = null, city = null, anonymous_id = $3
          where id = $1`,
         [request.subject_id, `${anonId}@deleted.invalid`, anonId],
+      );
+      await tx.query(
+        `update profiles
+           set display_name = null, city = null
+         where id = $1`,
+        [request.subject_id],
       );
 
       // Re-key consent: append (never mutate) a linkage withdrawal row carrying

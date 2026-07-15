@@ -76,11 +76,16 @@ export async function GET(req: Request): Promise<NextResponse> {
       total_cents: string;
       event_count: string;
     }>(
+      // Revenue = EARNING events only ('conversion' | 'manual'). 'payout'
+      // events are disbursement records (the ambassador's cut, already part of
+      // the conversion commission) and 'click' events carry no money — summing
+      // them would double-count the split against the originating conversion.
       `select ${dim.label} as key,
               coalesce(sum(e.amount_cents), 0)::text as total_cents,
               count(*)::text as event_count
          from revenue_attribution_events e
          ${dim.join}
+        where e.event_type in ('conversion', 'manual')
         group by ${dim.label}
         order by coalesce(sum(e.amount_cents), 0) desc`,
     );
