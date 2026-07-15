@@ -26,9 +26,33 @@
   --color-danger: #c0392b;
   --color-success: #2e8b57;
 
-  /* Admin palette */
+  /* Admin palette (operator dashboard — clay/amber on neutral canvas). */
   --color-admin: #b4530a;
+  --color-admin-600: #c2610f;
+  --color-admin-050: #fbf1e7;
   --color-admin-canvas: #f7f5f2;
+  --color-admin-surface: #ffffff;
+  --color-admin-surface2: #fbfaf8;
+  --color-admin-border: #e7e3dd;
+  --color-admin-border-strong: #d6d1c8;
+  --color-admin-ink: #1c1917;
+  --color-admin-ink-2: #57534e;
+  --color-admin-ink-3: #8a847c;
+  --color-admin-sidebar: #211d1a;
+  --color-admin-teal: #0f766e;
+  --color-admin-teal-050: #e6f2f0;
+  --color-admin-green: #15803d;
+  --color-admin-green-bg: #e7f4ec;
+  --color-admin-amber: #b45309;
+  --color-admin-amber-bg: #fbf0de;
+  --color-admin-blue: #1d4ed8;
+  --color-admin-blue-bg: #e7edfb;
+  --color-admin-red: #b91c1c;
+  --color-admin-red-bg: #fbeaea;
+  --color-admin-slate: #475569;
+  --color-admin-slate-bg: #eef1f4;
+  --color-admin-violet: #6d28d9;
+  --color-admin-violet-bg: #f0eafb;
 
   /* Radii */
   --radius-sm: 12px;
@@ -65,4 +89,21 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Admin form input — dense, matches the operator design system. */
+.admin-input {
+  width: 100%;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-admin-ink);
+  background: var(--color-admin-surface);
+  border: 1px solid var(--color-admin-border-strong);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+.admin-input:focus {
+  outline: none;
+  border-color: var(--color-admin);
+  box-shadow: 0 0 0 3px var(--color-admin-050);
 }

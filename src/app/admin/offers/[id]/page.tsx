@@ -1,0 +1,13 @@
+import { OfferForm } from "@/components/admin/OfferForm";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export default async function AdminEditOfferPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return <OfferForm mode={{ kind: "edit", id }} />;
+}

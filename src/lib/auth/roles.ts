@@ -37,14 +37,35 @@ const defaultResolver: ActorResolver = async () => null;
 
 let resolver: ActorResolver = defaultResolver;
 
+/**
+ * Whether a resolver has been explicitly injected via `setActorResolver`. Used
+ * by `ensureActorResolver` so the app-startup default (real Supabase wiring)
+ * only installs when nothing has been injected — tests that call
+ * `setActorResolver` always take precedence.
+ */
+let customized = false;
+
 /** Inject a custom actor resolver (used by tests + server contexts). */
 export function setActorResolver(next: ActorResolver): void {
   resolver = next;
+  customized = true;
 }
 
 /** Restore the default (no-session) resolver. */
 export function resetActorResolver(): void {
   resolver = defaultResolver;
+  customized = false;
+}
+
+/**
+ * Install `fallback` as the resolver ONLY when no resolver has been injected via
+ * `setActorResolver`. This lets app startup wire the real Supabase-session→actor
+ * resolver without clobbering a test-injected actor (fail-closed by default).
+ */
+export function ensureActorResolver(fallback: ActorResolver): void {
+  if (!customized) {
+    resolver = fallback;
+  }
 }
 
 /** Resolve the current actor via the active resolver. */
