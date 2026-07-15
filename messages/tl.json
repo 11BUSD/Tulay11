@@ -1,0 +1,15 @@
+{
+  "common": {
+    "appName": "Tulay",
+    "tagline": "Ang iyong tulay para manirahan sa Ontario",
+    "language": "Wika",
+    "english": "Ingles",
+    "tagalog": "Tagalog",
+    "getStarted": "Magsimula",
+    "learnMore": "Matuto pa"
+  },
+  "landing": {
+    "heading": "Manirahan sa Ontario nang may kumpiyansa",
+    "subheading": "Subaybayan ang iyong pag-unlad sa 10 haligi ng paninirahan, tuklasin ang mapagkakatiwalaang mga alok, at kumuha ng gabay sa Ingles o Tagalog."
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "common": {
+    "appName": "Tulay",
+    "tagline": "Your bridge to settling in Ontario",
+    "language": "Language",
+    "english": "English",
+    "tagalog": "Tagalog",
+    "getStarted": "Get started",
+    "learnMore": "Learn more"
+  },
+  "landing": {
+    "heading": "Settle in Ontario with confidence",
+    "subheading": "Track your progress across 10 settlement pillars, discover trusted offers, and get guidance in English or Tagalog."
+  }
+}

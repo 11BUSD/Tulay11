@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — lifted from the approved Tulay design system.
+ * Consumer brand: teal / coral / gold on a warm cream canvas.
+ * Admin theme: clay / amber on a neutral canvas.
+ */
+:root {
+  /* Consumer palette */
+  --color-brand: #0e7c6b;
+  --color-brand-dark: #0a5a4e;
+  --color-brand-soft: #e1f0ec;
+  --color-accent: #e8623d;
+  --color-accent-soft: #fce7de;
+  --color-gold: #eba83a;
+  --color-gold-soft: #fbefd6;
+  --color-canvas: #fbf7f1;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f4eee3;
+  --color-ink: #1e2a2a;
+  --color-ink-soft: #52605e;
+  --color-ink-muted: #8a938f;
+  --color-line: #e7dfd1;
+  --color-danger: #c0392b;
+  --color-success: #2e8b57;
+
+  /* Admin palette */
+  --color-admin: #b4530a;
+  --color-admin-canvas: #f7f5f2;
+
+  /* Radii */
+  --radius-sm: 12px;
+  --radius: 18px;
+  --radius-lg: 26px;
+
+  /* Shadows */
+  --shadow-sm: 0 4px 14px rgba(30, 42, 42, 0.06);
+  --shadow: 0 12px 34px rgba(30, 42, 42, 0.1);
+
+  /* 8pt spacing rhythm */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+
+  /* Typography */
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
+    sans-serif;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
