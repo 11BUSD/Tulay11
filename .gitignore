@@ -6,3 +6,22 @@ dist/
 coverage/
 *.log
 .DS_Store
+
+# next
+/out/
+next-env.d.ts
+
+# serwist / service worker build output (generated from src/sw.ts on build)
+/public/sw.js
+/public/sw.js.map
+/public/swe-worker-*.js
+
+# testing
+/playwright-report/
+/test-results/
+/blob-report/
+/.playwright/
+
+# editor
+.idea/
+*.tsbuildinfo

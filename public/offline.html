@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>You're offline — Tulay</title>
+    <meta name="theme-color" content="#0E7C6B" />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+      body {
+        font-family:
+          system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif;
+        background: #fbf7f1;
+        color: #1e2a2a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .card {
+        max-width: 28rem;
+        margin: 1.5rem;
+        padding: 2rem;
+        text-align: center;
+      }
+      .logo {
+        display: inline-grid;
+        place-items: center;
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: #0e7c6b;
+        color: #fbf7f1;
+        font-size: 28px;
+        font-weight: 800;
+        margin-bottom: 1rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.5rem;
+      }
+      p {
+        color: #52605e;
+        line-height: 1.6;
+        margin: 0 0 1.25rem;
+      }
+      button {
+        border: 0;
+        border-radius: 8px;
+        background: #0e7c6b;
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0.7rem 1.4rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card" role="main">
+      <div class="logo" aria-hidden="true">T</div>
+      <h1>You're offline</h1>
+      <p>
+        Tulay can't reach the network right now. Your saved progress is stored
+        on this device — reconnect and try again to load the latest.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>
